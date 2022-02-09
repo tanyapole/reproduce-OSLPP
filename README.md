@@ -4,4 +4,6 @@ Implementation of method from "Progressively Select and Reject Pseudo-labelled S
 
 Feature files in mat/* are taken from https://github.com/hellowangqian/domain-adaptation-capls
 
-Code entry point is OSLPP_numpy.ipynb
+Code entry point is [OSLPP_numpy.ipynb](OSLPP_numpy.ipynb)
+
+To run this notebook, you can create conda environment from [env.yaml](env.yaml)
