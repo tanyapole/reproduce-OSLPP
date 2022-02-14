@@ -126,7 +126,6 @@ class Params:
     target: str # = 'clipart'
     num_src_classes: int # = 25
     num_total_classes: int # = 65
-    l2_first: bool # = True
     center_and_normalzie: bool # = False
 
 def _do_l2_normalization(feats_S, feats_T):
@@ -136,7 +135,9 @@ def _do_l2_normalization(feats_S, feats_T):
     return feats_S, feats_T
 
 def _do_pca(feats_S, feats_T, pca_dim):
-    feats_S, feats_T = get_PCA(feats_S, pca_dim), get_PCA(feats_T, pca_dim)
+    feats = np.concatenate([feats_S, feats_T], axis=0)
+    feats = get_PCA(feats, pca_dim)
+    feats_S, feats_T = feats[:len(feats_S)], feats[len(feats_S):]
     print('data shapes: ', feats_S.shape, feats_T.shape)
     return feats_S, feats_T
 
@@ -158,12 +159,9 @@ def main(params:Params):
     len(lbls_S), len(lbls_T)
 
     # l2 normalization and pca
-    if params.l2_first:
-        feats_S, feats_T = _do_l2_normalization(feats_S, feats_T)
-        feats_S, feats_T = _do_pca(feats_S, feats_T, params.pca_dim)
-    else:
-        feats_S, feats_T = _do_pca(feats_S, feats_T, params.pca_dim)
-        feats_S, feats_T = _do_l2_normalization(feats_S, feats_T)
+    feats_S, feats_T = _do_l2_normalization(feats_S, feats_T)
+    feats_S, feats_T = _do_pca(feats_S, feats_T, params.pca_dim)
+    feats_S, feats_T = _do_l2_normalization(feats_S, feats_T)
 
     # initial
     P = get_projection_matrix(feats_S, lbls_S, params.proj_dim)
