@@ -108,7 +108,7 @@ def select_closed_set_pseudo_labels(pseudo_labels, pseudo_probs, t, T):
     for c in np.unique(pseudo_labels):
         idxs = np.where(pseudo_labels == c)[0]
         Nc = len(idxs)
-        idxs2 = idxs[np.argsort(pseudo_probs[idxs])[-math.floor((t+1)*Nc/(T-1)):]]
+        idxs2 = idxs[np.argsort(pseudo_probs[idxs])[-math.floor((t*Nc)/(T-1)):]]
         assert (selected[idxs2] == 0).all()
         selected[idxs2] = 1
     return selected    
@@ -189,7 +189,7 @@ def main(params:Params):
         proj_S, proj_T = center_and_l2_normalize(proj_S, proj_T)
 
         pseudo_labels, pseudo_probs = get_closed_set_pseudo_labels(proj_S, lbls_S, proj_T)
-        selected = select_close_set_pseudo_labels(pseudo_labels, pseudo_probs, t, params.T)
+        selected = select_closed_set_pseudo_labels(pseudo_labels, pseudo_probs, t, params.T)
         selected = selected * (1-rejected)
 
         if t == 2:
