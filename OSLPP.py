@@ -50,9 +50,9 @@ def get_PCA(features, dim):
 
 def get_W(labels,):
     W = (labels.reshape(-1,1) == labels).astype(np.int)
-    negative_idxs = np.where(labels < 0)[0]
-    W[:,negative_idxs] = 0
-    W[negative_idxs,:] = 0
+    negative_one_idxs = np.where(labels == -1)[0]
+    W[:,negative_one_idxs] = 0
+    W[negative_one_idxs,:] = 0
     return W
 
 def get_D(W): return np.eye(len(W), dtype=np.int) * W.sum(axis=1)
@@ -74,7 +74,14 @@ def get_projection_matrix(features, labels, proj_dim):
     w, v = scipy.linalg.eigh(A, B)
     assert w[0] < w[-1]
     w, v = w[-proj_dim:], v[:, -proj_dim:]
-    assert np.abs(np.matmul(A, v) - w * np.matmul(B, v)).max() < 1e-8
+    assert np.abs(np.matmul(A, v) - w * np.matmul(B, v)).max() < 1e-5
+
+    w = np.flip(w)
+    v = np.flip(v, axis=1)
+
+    for i in range(v.shape[1]):
+        if v[0,i] < 0:
+            v[:,i] *= -1
     return v
 
 def project_features(P, features):
@@ -104,13 +111,18 @@ def select_initial_rejected(pseudo_probs, n_r):
     return is_rejected
 
 def select_closed_set_pseudo_labels(pseudo_labels, pseudo_probs, t, T):
+    if t >= T: t = T - 1
     selected = np.zeros_like(pseudo_labels)
     for c in np.unique(pseudo_labels):
         idxs = np.where(pseudo_labels == c)[0]
         Nc = len(idxs)
-        idxs2 = idxs[np.argsort(pseudo_probs[idxs])[-math.floor((t*Nc)/(T-1)):]]
-        assert (selected[idxs2] == 0).all()
-        selected[idxs2] = 1
+        if Nc > 0:
+            class_probs = pseudo_probs[idxs]
+            class_probs = np.sort(class_probs)
+            threshold = class_probs[math.floor(Nc*(1-t/(T-1)))]
+            idxs2 = idxs[pseudo_probs[idxs] > threshold]
+            assert (selected[idxs2] == 0).all()
+            selected[idxs2] = 1
     return selected    
 
 def update_rejected(selected, rejected, features_T):
@@ -148,8 +160,8 @@ class Params:
 
 def do_l2_normalization(feats_S, feats_T):
     feats_S, feats_T = get_l2_normalized(feats_S), get_l2_normalized(feats_T)
-    assert np.abs(get_l2_norm(feats_S) - 1.).max() < 1e-6
-    assert np.abs(get_l2_norm(feats_T) - 1.).max() < 1e-6
+    assert np.abs(get_l2_norm(feats_S) - 1.).max() < 1e-5
+    assert np.abs(get_l2_norm(feats_T) - 1.).max() < 1e-5
     return feats_S, feats_T
 
 def do_pca(feats_S, feats_T, pca_dim):
@@ -170,7 +182,6 @@ def center_and_l2_normalize(zs_S, zs_T):
 
 def main(params:Params):
     (feats_S, lbls_S), (feats_T, lbls_T) = create_datasets(params.source, params.target, params.num_src_classes, params.num_total_classes)
-    feats_all = np.concatenate((feats_S, feats_T), axis=0)
     print(len(lbls_S), len(lbls_T))
 
     # l2 normalization and pca
@@ -179,6 +190,7 @@ def main(params:Params):
     feats_S, feats_T = do_l2_normalization(feats_S, feats_T)
 
     # initial
+    feats_all = np.concatenate((feats_S, feats_T), axis=0)
     pseudo_labels = -np.ones_like(lbls_T)
     rejected = np.zeros_like(pseudo_labels)
 
@@ -203,7 +215,15 @@ def main(params:Params):
         pseudo_labels[rejected == 1] = -2
 
     # final pseudo labels
-    pseudo_labels[is_rejected == 1] = params.num_src_classes
+    pseudo_labels[pseudo_labels == -2] = params.num_src_classes
+    assert (pseudo_labels != -1).all()
 
     # evaluation
     print(evaluate(pseudo_labels, lbls_T, params.num_src_classes))
+
+
+if __name__ == '__main__':
+    params = Params(pca_dim=512, proj_dim=128, T=10, n_r=1200, 
+                  dataset='OfficeHome', source='art', target='clipart',
+                  num_src_classes=25, num_total_classes=65)
+    main(params)
