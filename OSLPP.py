@@ -146,26 +146,26 @@ class Params:
     num_src_classes: int # = 25
     num_total_classes: int # = 65
 
-def _do_l2_normalization(feats_S, feats_T):
+def do_l2_normalization(feats_S, feats_T):
     feats_S, feats_T = get_l2_normalized(feats_S), get_l2_normalized(feats_T)
     assert np.abs(get_l2_norm(feats_S) - 1.).max() < 1e-6
     assert np.abs(get_l2_norm(feats_T) - 1.).max() < 1e-6
     return feats_S, feats_T
 
-def _do_pca(feats_S, feats_T, pca_dim):
+def do_pca(feats_S, feats_T, pca_dim):
     feats = np.concatenate([feats_S, feats_T], axis=0)
     feats = get_PCA(feats, pca_dim)
     feats_S, feats_T = feats[:len(feats_S)], feats[len(feats_S):]
     print('data shapes: ', feats_S.shape, feats_T.shape)
     return feats_S, feats_T
 
-def _center_and_l2_normalize(zs_S, zs_T):
+def center_and_l2_normalize(zs_S, zs_T):
     # center
     zs_mean = np.concatenate((zs_S, zs_T), axis=0).mean(axis=0).reshape((1,-1))
     zs_S = zs_S - zs_mean
     zs_T = zs_T - zs_mean
     # l2 normalize
-    zs_S, zs_T = _do_l2_normalization(zs_S, zs_T)
+    zs_S, zs_T = do_l2_normalization(zs_S, zs_T)
     return zs_S, zs_T
 
 def main(params:Params):
@@ -174,9 +174,9 @@ def main(params:Params):
     print(len(lbls_S), len(lbls_T))
 
     # l2 normalization and pca
-    feats_S, feats_T = _do_l2_normalization(feats_S, feats_T)
-    feats_S, feats_T = _do_pca(feats_S, feats_T, params.pca_dim)
-    feats_S, feats_T = _do_l2_normalization(feats_S, feats_T)
+    feats_S, feats_T = do_l2_normalization(feats_S, feats_T)
+    feats_S, feats_T = do_pca(feats_S, feats_T, params.pca_dim)
+    feats_S, feats_T = do_l2_normalization(feats_S, feats_T)
 
     # initial
     pseudo_labels = -np.ones_like(lbls_T)
@@ -186,7 +186,7 @@ def main(params:Params):
     for t in range(1, params.T+1):
         P = get_projection_matrix(feats_all, np.concatenate((lbls_S, pseudo_labels), axis=0), params.proj_dim)
         proj_S, proj_T = project_features(P, feats_S), project_features(P, feats_T)
-        proj_S, proj_T = _center_and_l2_normalize(proj_S, proj_T)
+        proj_S, proj_T = center_and_l2_normalize(proj_S, proj_T)
 
         pseudo_labels, pseudo_probs = get_closed_set_pseudo_labels(proj_S, lbls_S, proj_T)
         selected = select_close_set_pseudo_labels(pseudo_labels, pseudo_probs, t, params.T)
