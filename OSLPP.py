@@ -165,7 +165,6 @@ def do_pca(feats_S, feats_T, pca_dim):
     feats = np.concatenate([feats_S, feats_T], axis=0)
     feats = get_PCA(feats, pca_dim)
     feats_S, feats_T = feats[:len(feats_S)], feats[len(feats_S):]
-    print('data shapes: ', feats_S.shape, feats_T.shape)
     return feats_S, feats_T
 
 def center_and_l2_normalize(zs_S, zs_T):
@@ -179,7 +178,6 @@ def center_and_l2_normalize(zs_S, zs_T):
 
 def main(params:Params):
     (feats_S, lbls_S), (feats_T, lbls_T) = create_datasets(params.source, params.target, params.num_src_classes, params.num_total_classes)
-    print(len(lbls_S), len(lbls_T))
 
     # l2 normalization and pca
     feats_S, feats_T = do_l2_normalization(feats_S, feats_T)
@@ -202,7 +200,6 @@ def main(params:Params):
         selected = selected * (1-rejected)
 
         if t == 2:
-            print(f'selecting initial rejected samples at t={t}')
             rejected = select_initial_rejected(pseudo_probs, params.n_r)
         if t >= 2:
             rejected = update_rejected(selected, rejected, proj_T)
@@ -216,11 +213,11 @@ def main(params:Params):
     assert (pseudo_labels != -1).all()
 
     # evaluation
-    print(evaluate(pseudo_labels, lbls_T, params.num_src_classes))
+    return evaluate(pseudo_labels, lbls_T, params.num_src_classes)
 
 
 if __name__ == '__main__':
     params = Params(pca_dim=512, proj_dim=128, T=10, n_r=1200, 
-                  dataset='OfficeHome', source='art', target='clipart',
+                  dataset='OfficeHome', source='clipart', target='art',
                   num_src_classes=25, num_total_classes=65)
-    main(params)
+    print(params.source, params.target, main(params))
