@@ -127,15 +127,12 @@ def select_closed_set_pseudo_labels(pseudo_labels, pseudo_probs, t, T):
 
 def update_rejected(selected, rejected, features_T):
     unlabeled = (selected == 0) * (rejected == 0)
-    labeled_idxs = np.where(~unlabeled)[0]
     new_is_rejected = rejected.copy()
     for idx in np.where(unlabeled)[0]:
-        dists = get_dist(features_T[idx], features_T[labeled_idxs])
-        nn_idx = dists.argmin()
-        if rejected[labeled_idxs[nn_idx]]:
+        dist_to_selected = get_dist(features_T[idx], features_T[selected == 1]).min()
+        dist_to_rejected = get_dist(features_T[idx], features_T[rejected == 1]).min()
+        if dist_to_rejected < dist_to_selected:
             new_is_rejected[idx] = 1
-    assert (new_is_rejected[rejected == 1] == 1).all()
-    assert (new_is_rejected[selected == 1] == 0).all()
     return new_is_rejected
 
 def evaluate(predicted, labels, num_src_classes):
